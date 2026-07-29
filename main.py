@@ -21,9 +21,66 @@ def load_fallback():
     except Exception:
         return []
 
+def parse_inform(wb):
+    ac = wb["INFORM Severity - all crises"]
+    rows = list(ac.iter_rows(values_only=True))
+    hi = None; hdr = None
+    for i, r in enumerate(rows[:8]):
+        cells = [str(c).strip() if c else "" for c in (r or [])]
+        if "CRISIS" in cells and "ISO3" in cells:
+            hi, hdr = i, cells; break
+    if hi is None:
+        raise ValueError("all-crises header not found")
+    def col(*names):
+        for n in names:
+            if n in hdr: return hdr.index(n)
+        return None
+    i_c = col("CRISIS"); i_cid = col("CRISIS ID")
+    i_co = col("COUNTRY"); i_iso = col("ISO3"); i_dr = col("DRIVERS")
+    sev_idx = [j for j, h in enumerate(hdr) if h.startswith("INFORM Severity")]
+    i_sev = sev_idx[0]; i_cat = sev_idx[2] if len(sev_idx) >= 3 else None
+    i_tr = col("Trend (last 3 months)", "Trend"); i_rel = col("Reliability")
+    def g(r, i): return r[i] if (i is not None and i < len(r)) else None
+    base = []
+    for r in rows[hi + 1:]:
+        if not r: continue
+        co = g(r, i_co)
+        try: sev = float(g(r, i_sev))
+        except (TypeError, ValueError): continue
+        if not co: continue
+        base.append({"c": str(g(r, i_c) or co), "cid": str(g(r, i_cid) or ""),
+                     "co": str(co), "iso": str(g(r, i_iso) or ""), "dr": str(g(r, i_dr) or ""),
+                     "sev": round(sev, 1), "cat": str(g(r, i_cat) or ""),
+                     "tr": str(g(r, i_tr) or ""), "rel": str(g(r, i_rel) or ""), "pin": None})
+    pin = {}
+    if "Conditions of people affected" in wb.sheetnames:
+        cr = list(wb["Conditions of people affected"].iter_rows(values_only=True))
+        def num(x):
+            try: return float(x)
+            except (TypeError, ValueError): return 0.0
+        l3, l4, l5, idc = 7, 8, 9, 2
+        for r in cr[:8]:
+            cells = [str(c) if c is not None else "" for c in (r or [])]
+            for j, c in enumerate(cells):
+                cl = c.lower()
+                if "# of people" in cl and "moderat" in cl: l3 = j
+                elif "# of people" in cl and "severe" in cl: l4 = j
+                elif "# of people" in cl and "extreme" in cl: l5 = j
+            if "CRISIS ID" in cells: idc = cells.index("CRISIS ID")
+        for r in cr:
+            cid = r[idc] if idc < len(r) else None
+            if not cid or not str(cid).strip(): continue
+            v = num(r[l3] if l3 < len(r) else 0) + num(r[l4] if l4 < len(r) else 0) + num(r[l5] if l5 < len(r) else 0)
+            if v > 0: pin[str(cid)] = int(round(v * 1e6))
+    for b in base:
+        b["pin"] = pin.get(b["cid"]); b.pop("cid", None)
+    if len(base) < 20:
+        raise ValueError("parsed too few crises")
+    return base
+
 def fetch_inform():
     try:
-        import openpyxl
+        import openpyxl, io
         meta = json.loads(_get("https://data.humdata.org/api/3/action/package_show?id=" + HDX_PKG))
         res = meta["result"]["resources"]
         pick = None
@@ -33,70 +90,39 @@ def fetch_inform():
                 if "severity" in (str(x.get("name", "")) + str(x.get("url", ""))).lower():
                     break
         if not pick:
-            raise ValueError("no xlsx resource on HDX")
+            raise ValueError("no xlsx on HDX")
         raw = _get(pick.get("download_url") or pick.get("url"))
         wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        name = "INFORM Severity - all crises"
-        ws = wb[name] if name in wb.sheetnames else wb.worksheets[2]
-        rows = list(ws.iter_rows(values_only=True))
-        hi, hdr = None, None
-        for i, r in enumerate(rows[:8]):
-            cells = [str(c).strip() if c else "" for c in (r or [])]
-            if "CRISIS" in cells and "ISO3" in cells:
-                hi, hdr = i, cells; break
-        if hi is None:
-            raise ValueError("header row not found")
-        def col(*names):
-            for n in names:
-                if n in hdr: return hdr.index(n)
-            return None
-        sev_idx = [j for j, h in enumerate(hdr) if h.startswith("INFORM Severity")]
-        i_c, i_co, i_iso, i_dr = col("CRISIS"), col("COUNTRY"), col("ISO3"), col("DRIVERS")
-        i_sev = sev_idx[0] if sev_idx else None
-        i_cat = sev_idx[2] if len(sev_idx) >= 3 else None
-        i_tr  = col("Trend (last 3 months)", "Trend")
-        i_rel = col("Reliability")
-        i_pin = col("People in need")
-        def g(r, i): return r[i] if (i is not None and i < len(r)) else None
-        out = []
-        for r in rows[hi + 1:]:
-            if not r: continue
-            co = g(r, i_co)
-            try: sev = float(g(r, i_sev))
-            except (TypeError, ValueError): continue
-            if not co: continue
-            try: pin = int(float(g(r, i_pin)))
-            except (TypeError, ValueError): pin = None
-            out.append({"c": str(g(r, i_c) or co), "co": str(co), "iso": str(g(r, i_iso) or ""),
-                        "dr": str(g(r, i_dr) or ""), "sev": round(sev, 1), "cat": str(g(r, i_cat) or ""),
-                        "tr": str(g(r, i_tr) or ""), "rel": str(g(r, i_rel) or ""), "pin": pin})
-        if len(out) < 20:
-            raise ValueError("parsed too few crises")
-        return out, "live from HDX"
+        return parse_inform(wb), "live from HDX"
     except Exception as e:
         return load_fallback(), "fallback snapshot (%s)" % str(e)[:70]
 
 def fetch_fts(year):
-    try:
-        j = json.loads(_get("https://api.fts.unocha.org/v1/public/plan/overview/%d" % year))
-        plans = (j.get("data") or {}).get("plans") or j.get("plans") or []
-        m = {}
-        for p in plans:
-            locs = p.get("locations") or p.get("countries") or []
-            iso = (locs[0].get("iso3") or locs[0].get("code")) if (isinstance(locs, list) and locs) else None
-            req = p.get("requirements")
-            if isinstance(req, dict): req = req.get("revisedRequirements") or req.get("origRequirements") or 0
-            fund = p.get("funding")
-            if isinstance(fund, dict): fund = fund.get("totalFunding") or 0
-            try: req, fund = float(req or 0), float(fund or 0)
-            except (TypeError, ValueError): req, fund = 0, 0
-            if iso:
-                d = m.setdefault(iso, {"req": 0.0, "fund": 0.0}); d["req"] += req; d["fund"] += fund
-        if not m:
-            raise ValueError("no plans parsed")
-        return m, "live %d" % year
-    except Exception as e:
-        return {}, "unavailable (%s)" % str(e)[:70]
+    hosts = ["https://api.hpc.tools/v1/public/plan/overview/%d" % year,
+             "https://api.fts.unocha.org/v1/public/plan/overview/%d" % year]
+    last = "no host"
+    for url in hosts:
+        try:
+            j = json.loads(_get(url))
+            plans = (j.get("data") or {}).get("plans") or j.get("plans") or []
+            m = {}
+            for p in plans:
+                locs = p.get("locations") or p.get("countries") or []
+                iso = (locs[0].get("iso3") or locs[0].get("code")) if (isinstance(locs, list) and locs) else None
+                req = p.get("requirements")
+                if isinstance(req, dict): req = req.get("revisedRequirements") or req.get("origRequirements") or 0
+                fund = p.get("funding")
+                if isinstance(fund, dict): fund = fund.get("totalFunding") or 0
+                try: req, fund = float(req or 0), float(fund or 0)
+                except (TypeError, ValueError): req, fund = 0, 0
+                if iso:
+                    d = m.setdefault(iso, {"req": 0.0, "fund": 0.0}); d["req"] += req; d["fund"] += fund
+            if not m:
+                raise ValueError("no plans")
+            return m, "live %d via %s" % (year, url.split("/")[2])
+        except Exception as e:
+            last = str(e)[:60]
+    return {}, "unavailable (%s)" % last
 
 def enrich(crises, fts):
     for d in crises:
