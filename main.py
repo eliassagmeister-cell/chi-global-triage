@@ -98,31 +98,37 @@ def fetch_inform():
         return load_fallback(), "fallback snapshot (%s)" % str(e)[:70]
 
 def fetch_fts(year):
-    hosts = ["https://api.hpc.tools/v1/public/plan/overview/%d" % year,
-             "https://api.fts.unocha.org/v1/public/plan/overview/%d" % year]
-    last = "no host"
-    for url in hosts:
+    try:
+        pj = json.loads(_get("https://api.hpc.tools/v1/public/plan/year/%d" % year))
+        fj = json.loads(_get("https://api.hpc.tools/v1/public/fts/flow?year=%d&groupby=plan" % year))
+        fund_by_plan = {}
         try:
-            j = json.loads(_get(url))
-            plans = (j.get("data") or {}).get("plans") or j.get("plans") or []
-            m = {}
-            for p in plans:
-                locs = p.get("locations") or p.get("countries") or []
-                iso = (locs[0].get("iso3") or locs[0].get("code")) if (isinstance(locs, list) and locs) else None
-                req = p.get("requirements")
-                if isinstance(req, dict): req = req.get("revisedRequirements") or req.get("origRequirements") or 0
-                fund = p.get("funding")
-                if isinstance(fund, dict): fund = fund.get("totalFunding") or 0
-                try: req, fund = float(req or 0), float(fund or 0)
-                except (TypeError, ValueError): req, fund = 0, 0
-                if iso:
-                    d = m.setdefault(iso, {"req": 0.0, "fund": 0.0}); d["req"] += req; d["fund"] += fund
-            if not m:
-                raise ValueError("no plans")
-            return m, "live %d via %s" % (year, url.split("/")[2])
-        except Exception as e:
-            last = str(e)[:60]
-    return {}, "unavailable (%s)" % last
+            objs = fj["data"]["report3"]["fundingTotals"]["objects"]
+        except (KeyError, TypeError):
+            objs = []
+        for o in objs:
+            for sfo in (o.get("singleFundingObjects") or []):
+                pid = sfo.get("id")
+                if pid is not None:
+                    fund_by_plan[pid] = float(sfo.get("totalFunding") or 0)
+        m = {}
+        for p in (pj.get("data") or []):
+            pid = p.get("id")
+            req = p.get("revisedRequirements") or p.get("origRequirements") or 0
+            iso = None
+            for l in (p.get("locations") or []):
+                if l.get("iso3"):
+                    iso = l["iso3"]; break
+            if not iso:
+                continue
+            d = m.setdefault(iso, {"req": 0.0, "fund": 0.0})
+            d["req"] += float(req or 0)
+            d["fund"] += fund_by_plan.get(pid, 0.0)
+        if not m:
+            raise ValueError("no plans")
+        return m, "live %d via hpc.tools" % year
+    except Exception as e:
+        return {}, "unavailable (%s)" % str(e)[:70]
 
 def enrich(crises, fts):
     for d in crises:
