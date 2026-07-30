@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python main.py build
-      - run: mkdir -p _site && cp index.html _site/
+      - run: mkdir -p _site && cp index.html _site/ && echo 'crises.therightthings.org' > _site/CNAME
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
