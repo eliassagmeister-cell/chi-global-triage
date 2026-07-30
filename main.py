@@ -180,16 +180,16 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 <p>Every active humanitarian crisis, ranked by a score that blends how severe it is with how underfunded it is. Move the &alpha; slider to weight neglect against severity: at 0 the ranking is pure severity, at 1 it is pure funding gap.</p>
 <div class="deft">Sources</div>
 <ul>
-<li><b>INFORM Severity</b> (ACAPS) &mdash; a 0&ndash;10 composite of a crisis's impact, the conditions of the people affected, and its complexity, refreshed monthly.</li>
-<li><b>OCHA FTS</b> &mdash; humanitarian funding reported against each crisis's UN-coordinated appeal, measured against what that appeal requires.</li>
+<li><b>INFORM Severity</b> (ACAPS): a 0&ndash;10 composite of a crisis's impact, the conditions of the people affected, and its complexity, refreshed monthly.</li>
+<li><b>OCHA FTS</b>: humanitarian funding reported against each crisis's UN-coordinated appeal, measured against what that appeal requires.</li>
 </ul>
 <div class="deft">What each column means</div>
 <ul>
-<li><b>Severity</b> &mdash; the INFORM Severity score, 0&ndash;10.</li>
-<li><b>Funding gap</b> &mdash; the share of the appeal still unfunded (1 &minus; coverage); higher means more neglected.</li>
-<li><b>$ / person</b> &mdash; funding received divided by the country's total people in need.</li>
-<li><b>Impact opportunity</b> &mdash; the ranking score, &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity, shown out of 100.</li>
-<li><b>&alpha;</b> &mdash; the slider below: the weight given to the funding gap (neglect) versus severity.</li>
+<li><b>Severity</b>: the INFORM Severity score, 0&ndash;10.</li>
+<li><b>Funding gap</b>: the share of the appeal still unfunded (1 &minus; coverage); higher means more neglected.</li>
+<li><b>$ / person</b>: funding received divided by the country's total people in need (shown for context only).</li>
+<li><b>Impact opportunity</b>: the ranking score, &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity, shown out of 100.</li>
+<li><b>&alpha;</b>: the slider below: the weight given to the funding gap (neglect) versus severity.</li>
 </ul>
 </div>
 <div class="ctrls">
@@ -222,11 +222,11 @@ function render(){
     '<td class="impc"><div class="barwrap"><div class="bar" style="width:'+sc+'%"></div><span class="scv">'+sc+'</span></div></td></tr>';}).join('');
   document.getElementById('nn').textContent=rows.length;
   var na=D.filter(function(d){return d.cov==null && d.sev>=7;}).sort(function(a,b){return b.sev-a.sev;});
-  document.getElementById('noapp').innerHTML=na.length?('<span class="flag">Note:</span> some severe crises have no FTS appeal and so can\'t be scored on funding &mdash; worth a manual look: '+na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(', ')+'.'):'';
+  document.getElementById('noapp').innerHTML=na.length?('<span class="flag">Note:</span> some severe crises have no FTS appeal and so can\'t be scored on funding. Worth a manual look: '+na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(', ')+'.'):'';
 }
 document.getElementById('a').addEventListener('input',render);
 [].slice.call(document.querySelectorAll('th[data-k]')).forEach(function(th){th.onclick=function(){var k=th.dataset.k;if(st.k===k)st.dir*=-1;else{st.k=k;st.dir=(k==="co")?1:-1;}render();};});
-document.getElementById('prov').textContent='Generated '+M.date+' — INFORM '+M.inform+', FTS '+M.fts;
+document.getElementById('prov').textContent='Generated '+M.date+'. INFORM '+M.inform+', FTS '+M.fts;
 render();
 </script></body></html>'''
 
