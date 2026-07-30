@@ -132,11 +132,17 @@ def fetch_fts(year):
         return {}, "unavailable (%s)" % str(e)[:70]
 
 def enrich(crises, fts):
+    pin_by_iso = {}
+    for d in crises:
+        if d.get("iso") and d.get("pin"):
+            pin_by_iso[d["iso"]] = pin_by_iso.get(d["iso"], 0) + d["pin"]
     for d in crises:
         f = fts.get(d.get("iso")) if d.get("iso") else None
         d["cov"] = round(100 * f["fund"] / f["req"]) if (f and f.get("req")) else None
-        d["fpp"] = round(f["fund"] / d["pin"]) if (f and d.get("pin")) else None
+        tot = pin_by_iso.get(d.get("iso"), 0)
+        d["fpp"] = round(f["fund"] / tot) if (f and tot) else None
     return crises
+
 
 HTML = r'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CHI Global Triage</title><style>
