@@ -145,76 +145,20 @@ def enrich(crises, fts):
 
 
 HTML = r'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CHI Global Triage</title><style>
+<title>Severity and Neglectedness of Humanitarian Crises</title><style>
 :root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--mut:#78716c;--line:#e7e5e4;--accent:#0f766e}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1160px;margin:0 auto;padding:24px 20px 60px}
-h1{font-size:20px;margin:0 0 2px}.sub{color:var(--mut);font-size:12px;margin-bottom:16px}
-.cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:110px}
-.card .n{font-size:22px;font-weight:700}.card .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
-.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
-.controls input[type=search]{flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px}
-.controls label{font-size:12px;color:var(--mut);display:flex;gap:6px;align-items:center}
-.controls input[type=range]{accent-color:var(--accent)}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
-th{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;white-space:nowrap;background:#fbfbfa;position:sticky;top:0}
-th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
-.rk{color:var(--mut);font-variant-numeric:tabular-nums}.nm{font-weight:600}.iso{color:var(--mut);font-size:11px;margin-left:6px}
-.subc,.dr{color:var(--mut);font-size:11.5px}
-.pill{display:inline-block;min-width:34px;text-align:center;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;font-size:12px}
-.up{color:#dc2626;font-weight:700}.dn{color:#16a34a;font-weight:700}.fl{color:#9ca3af}.mut{color:var(--mut)}
-.note{margin-top:16px;font-size:11.5px;color:var(--mut);line-height:1.6}
-</style></head><body><div class="wrap">
-<h1>CHI Global Triage &mdash; INFORM Severity and FTS funding</h1>
-<div class="sub" id="prov"></div>
-<div class="cards" id="cards"></div>
-<div class="controls">
-<input type="search" id="q" placeholder="Search crisis or country...">
-<label>min severity <input type="range" id="min" min="0" max="10" step="0.5" value="0"><b id="minv">0</b></label>
-</div>
-<table><thead><tr>
-<th class="r" data-k="rank">#</th><th data-k="co">Crisis</th><th class="r" data-k="sev">Severity</th>
-<th data-k="tr">Trend</th><th data-k="rel">Reliab.</th><th class="r" data-k="pin">People in need</th>
-<th class="r" data-k="cov">Funding %</th><th class="r" data-k="fpp">$ / person</th><th data-k="dr">Drivers</th>
-</tr></thead><tbody id="tb"></tbody></table>
-<div class="note">A screen of need and neglect, not an estimate of cost-effectiveness. Severity is INFORM (0-10, ACAPS); people in need is INFORM levels 3-5; funding and dollars per person are OCHA FTS joined by ISO3, where dollars per person is funding received divided by people in need. Blank funding means FTS returned no matching plan for that country.</div>
-</div>
-<script>
-var D=__DATA__,M=__META__;
-var CAT={"Very High":"#b91c1c","High":"#ea580c","Medium":"#d97706","Low":"#65a30d","Very Low":"#4d7c0f"};
-var st={q:"",min:0,k:"sev",dir:-1};
-function tc(t){t=(t||"").toLowerCase();if(t.indexOf("incr")===0)return '<span class="up">&#9650; rising</span>';if(t.indexOf("decr")===0)return '<span class="dn">&#9660; easing</span>';return '<span class="fl">&#9644; stable</span>';}
-function fmt(n){return (n==null)?'<span class="mut">&ndash;</span>':(+n).toLocaleString();}
-function cc(p){if(p==null)return '';if(p<25)return '#b91c1c';if(p<50)return '#ea580c';if(p<75)return '#d97706';return '#16a34a';}
-function render(){
- var rows=D.filter(function(d){return d.sev>=st.min&&(st.q===""||(d.co+" "+d.c+" "+d.iso).toLowerCase().indexOf(st.q)>=0);});
- rows.sort(function(a,b){var A=a[st.k],B=b[st.k];if(A==null)return 1;if(B==null)return -1;if(typeof A==="string")return st.dir*A.localeCompare(B);return st.dir*(A-B);});
- document.getElementById('tb').innerHTML=rows.map(function(d,i){var c=CAT[d.cat]||"#78716c";return '<tr><td class="r rk">'+(i+1)+'</td><td><span class="nm">'+d.co+'</span>'+(d.iso?'<span class="iso">'+d.iso+'</span>':'')+((d.c&&d.c!==d.co)?'<div class="subc">'+d.c+'</div>':'')+'</td><td class="r"><span class="pill" style="background:'+c+'">'+d.sev.toFixed(1)+'</span></td><td>'+tc(d.tr)+'</td><td class="mut">'+(d.rel||'')+'</td><td class="r">'+fmt(d.pin)+'</td><td class="r" style="color:'+cc(d.cov)+';font-weight:600">'+((d.cov==null)?'<span class="mut">&ndash;</span>':d.cov+'%')+'</td><td class="r">'+((d.fpp==null)?'<span class="mut">&ndash;</span>':'$'+(+d.fpp).toLocaleString())+'</td><td class="dr">'+(d.dr||'')+'</td></tr>';}).join('');
- var vh=D.filter(function(d){return d.cat==="Very High";}).length,h=D.filter(function(d){return d.cat==="High";}).length;
- document.getElementById('cards').innerHTML='<div class="card"><div class="n">'+D.length+'</div><div class="l">crises</div></div><div class="card"><div class="n" style="color:#b91c1c">'+vh+'</div><div class="l">very high</div></div><div class="card"><div class="n" style="color:#ea580c">'+h+'</div><div class="l">high</div></div><div class="card"><div class="n">'+rows.length+'</div><div class="l">shown</div></div>';
-}
-document.getElementById('q').oninput=function(e){st.q=e.target.value.toLowerCase().trim();render();};
-document.getElementById('min').oninput=function(e){st.min=+e.target.value;document.getElementById('minv').textContent=e.target.value;render();};
-Array.prototype.forEach.call(document.querySelectorAll('th[data-k]'),function(th){th.onclick=function(){var k=th.dataset.k;if(k==="rank")return;if(st.k===k)st.dir*=-1;else{st.k=k;st.dir=(["co","dr","tr","rel"].indexOf(k)>=0)?1:-1;}render();};});
-document.getElementById('prov').textContent='INFORM: '+M.inform+'   FTS: '+M.fts+'   generated '+M.date;
-render();
-</script></body></html>'''
-
-HTML2 = r'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CHI Impact Opportunity</title><style>
-:root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--mut:#78716c;--line:#e7e5e4;--accent:#0f766e}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1000px;margin:0 auto;padding:24px 20px 60px}
-h1{font-size:20px;margin:0 0 2px}a{color:var(--accent)}
-.sub{color:var(--mut);font-size:12px;margin-bottom:6px}
-.cap{font-size:12.5px;color:var(--mut);line-height:1.5;margin:8px 0 12px}
-.ctrls{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:21px;margin:0 0 3px}a{color:var(--accent)}
+.prov{color:var(--mut);font-size:12px;margin-bottom:16px}
+.about{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.55}
+.about p{margin:0 0 10px}
+.deft{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:10px 0 5px;font-weight:600}
+.about ul{margin:0;padding-left:18px}.about li{margin:3px 0;color:var(--ink)}.about li b{color:var(--ink)}
+.ctrls{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
 .ctl{flex:1;min-width:240px}.lab{font-size:12px;color:var(--mut);margin-bottom:6px}.lab b{color:var(--ink)}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .wts{font-size:12px;color:var(--mut)}.wts b{color:var(--ink)}
-.noapp{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 13px;font-size:12px;color:#9a3412;margin-bottom:12px;line-height:1.5}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
 th{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;background:#fbfbfa;white-space:nowrap}
@@ -227,19 +171,36 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 .impc .barwrap{position:relative;background:#eef0ef;border-radius:5px;height:19px;overflow:hidden}
 .impc .bar{height:100%;background:var(--accent)}
 .impc .scv{position:absolute;right:7px;top:0;line-height:19px;font-size:11px;font-weight:700;color:var(--ink)}
-.note{font-size:11px;color:var(--mut);margin-top:12px;line-height:1.6}
+.below{margin-top:12px;font-size:11.5px;color:var(--mut);line-height:1.6}
+.below .flag{color:#9a3412}
 </style></head><body><div class="wrap">
-<h1>CHI Global Triage &mdash; Impact Opportunity</h1>
-<div class="sub" id="prov"></div>
-<div class="sub"><a href="index.html">&larr; back to the severity view</a></div>
-<div class="cap">Impact Opportunity = &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity. Severity is INFORM/10; funding gap is 1 &minus; FTS coverage. The score is that value out of 100. Raise &alpha; to reward neglect, lower it to let severity lead. Click any column to re-sort.</div>
-<div class="ctrls">
-  <div class="ctl"><div class="lab">&alpha; (funding-gap weight) = <b id="av">0.35</b></div><input id="a" type="range" min="0" max="1" step="0.05" value="0.35"></div>
-  <div class="wts">severity <b id="sw">65</b>% &middot; funding gap <b id="fw">35</b>%</div>
+<h1>Severity and Neglectedness of Humanitarian Crises</h1>
+<div class="prov" id="prov"></div>
+<div class="about">
+<p>Every active humanitarian crisis, ranked by a score that blends how severe it is with how underfunded it is. Move the &alpha; slider to weight neglect against severity: at 0 the ranking is pure severity, at 1 it is pure funding gap.</p>
+<div class="deft">Sources</div>
+<ul>
+<li><b>INFORM Severity</b> (ACAPS) &mdash; a 0&ndash;10 composite of a crisis's impact, the conditions of the people affected, and its complexity, refreshed monthly.</li>
+<li><b>OCHA FTS</b> &mdash; humanitarian funding reported against each crisis's UN-coordinated appeal, measured against what that appeal requires.</li>
+</ul>
+<div class="deft">What each column means</div>
+<ul>
+<li><b>Severity</b> &mdash; the INFORM Severity score, 0&ndash;10.</li>
+<li><b>Funding gap</b> &mdash; the share of the appeal still unfunded (1 &minus; coverage); higher means more neglected.</li>
+<li><b>$ / person</b> &mdash; funding received divided by the country's total people in need.</li>
+<li><b>Impact opportunity</b> &mdash; the ranking score, &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity, shown out of 100.</li>
+<li><b>&alpha;</b> &mdash; the slider below: the weight given to the funding gap (neglect) versus severity.</li>
+</ul>
 </div>
-<div class="noapp" id="noapp"></div>
+<div class="ctrls">
+<div class="ctl"><div class="lab">&alpha; (funding-gap weight) = <b id="av">0.35</b></div><input id="a" type="range" min="0" max="1" step="0.05" value="0.35"></div>
+<div class="wts">severity <b id="sw">65</b>% &middot; funding gap <b id="fw">35</b>%</div>
+</div>
 <table><thead><tr><th class="r">#</th><th data-k="co">Crisis</th><th class="r" data-k="sev">Severity</th><th class="r" data-k="gap">Funding gap</th><th class="r" data-k="fpp">$ / person</th><th data-k="imp">Impact opportunity (0&ndash;100)</th></tr></thead><tbody id="tb"></tbody></table>
-<div class="note">Ranks the <b id="nn"></b> crises with an FTS appeal this year. Regional (multi-country) plans are split evenly across their countries. Crises with no appeal at all are flagged above, not ranked. Click a column header to sort by it. Data: INFORM Severity (ACAPS/HDX) and OCHA FTS, live.</div>
+<div class="below">
+<div id="noapp"></div>
+<div>Ranks the <b id="nn"></b> crises with an FTS appeal this year; regional (multi-country) plans are split evenly across their countries. Click any column header to sort by it. Data live from INFORM Severity (ACAPS/HDX) and OCHA FTS.</div>
+</div>
 </div>
 <script>
 var D=__DATA__,M=__META__;
@@ -261,11 +222,11 @@ function render(){
     '<td class="impc"><div class="barwrap"><div class="bar" style="width:'+sc+'%"></div><span class="scv">'+sc+'</span></div></td></tr>';}).join('');
   document.getElementById('nn').textContent=rows.length;
   var na=D.filter(function(d){return d.cov==null && d.sev>=7;}).sort(function(a,b){return b.sev-a.sev;});
-  document.getElementById('noapp').innerHTML='<b>Severe crises with no FTS appeal</b> (can\'t be scored on funding, worth a manual look): '+(na.length?na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(' &middot; '):'none');
+  document.getElementById('noapp').innerHTML=na.length?('<span class="flag">Note:</span> some severe crises have no FTS appeal and so can\'t be scored on funding &mdash; worth a manual look: '+na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(', ')+'.'):'';
 }
 document.getElementById('a').addEventListener('input',render);
 [].slice.call(document.querySelectorAll('th[data-k]')).forEach(function(th){th.onclick=function(){var k=th.dataset.k;if(st.k===k)st.dir*=-1;else{st.k=k;st.dir=(k==="co")?1:-1;}render();};});
-document.getElementById('prov').textContent='INFORM '+M.inform+'  ·  FTS '+M.fts+'  ·  generated '+M.date;
+document.getElementById('prov').textContent='Generated '+M.date+' — INFORM '+M.inform+', FTS '+M.fts;
 render();
 </script></body></html>'''
 
@@ -277,8 +238,6 @@ def build():
     meta = {"date": datetime.date.today().isoformat(), "inform": isrc, "fts": fsrc}
     html = HTML.replace("__DATA__", json.dumps(crises, ensure_ascii=False)).replace("__META__", json.dumps(meta, ensure_ascii=False))
     open(os.path.join(HERE, "index.html"), "w", encoding="utf-8").write(html)
-    html2 = HTML2.replace("__DATA__", json.dumps(crises, ensure_ascii=False)).replace("__META__", json.dumps(meta, ensure_ascii=False))
-    open(os.path.join(HERE, "impact.html"), "w", encoding="utf-8").write(html2)
     print("built:", len(crises), "crises | INFORM:", isrc, "| FTS:", fsrc)
     return meta
 
