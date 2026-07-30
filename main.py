@@ -200,7 +200,7 @@ HTML2 = r'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta nam
 <title>CHI Impact Opportunity</title><style>
 :root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--mut:#78716c;--line:#e7e5e4;--accent:#0f766e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1080px;margin:0 auto;padding:24px 20px 60px}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 20px 60px}
 h1{font-size:20px;margin:0 0 2px}a{color:var(--accent)}
 .sub{color:var(--mut);font-size:12px;margin-bottom:6px}
 .cap{font-size:12.5px;color:var(--mut);line-height:1.5;margin:8px 0 12px}
@@ -211,51 +211,54 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .noapp{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 13px;font-size:12px;color:#9a3412;margin-bottom:12px;line-height:1.5}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
-th{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;background:#fbfbfa}
+th{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;background:#fbfbfa;white-space:nowrap}
+th[data-k]{cursor:pointer;user-select:none}th[data-k]:hover{color:var(--ink)}
 th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 .rk{color:var(--mut);text-align:right}.nm{font-weight:600}.iso{color:var(--mut);font-size:11px;margin-left:6px}
 .pill{display:inline-block;min-width:32px;text-align:center;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;font-size:12px}
 .gap{color:#b45309;font-weight:600}
-.barwrap{background:#eee;border-radius:5px;height:15px;overflow:hidden;min-width:80px}.bar{height:100%;background:var(--accent)}
-.sc{text-align:right;font-weight:700}
+.impc{min-width:140px}
+.impc .barwrap{position:relative;background:#eef0ef;border-radius:5px;height:19px;overflow:hidden}
+.impc .bar{height:100%;background:var(--accent)}
+.impc .scv{position:absolute;right:7px;top:0;line-height:19px;font-size:11px;font-weight:700;color:var(--ink)}
 .note{font-size:11px;color:var(--mut);margin-top:12px;line-height:1.6}
 </style></head><body><div class="wrap">
 <h1>CHI Global Triage &mdash; Impact Opportunity</h1>
 <div class="sub" id="prov"></div>
 <div class="sub"><a href="index.html">&larr; back to the severity view</a></div>
-<div class="cap">Impact Opportunity = &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity. Severity is INFORM/10; funding gap is 1 &minus; FTS coverage. Raise &alpha; to reward neglect, lower it to let severity lead.</div>
+<div class="cap">Impact Opportunity = &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity. Severity is INFORM/10; funding gap is 1 &minus; FTS coverage. The score is that value out of 100. Raise &alpha; to reward neglect, lower it to let severity lead. Click any column to re-sort.</div>
 <div class="ctrls">
   <div class="ctl"><div class="lab">&alpha; (funding-gap weight) = <b id="av">0.35</b></div><input id="a" type="range" min="0" max="1" step="0.05" value="0.35"></div>
   <div class="wts">severity <b id="sw">65</b>% &middot; funding gap <b id="fw">35</b>%</div>
 </div>
 <div class="noapp" id="noapp"></div>
-<table><thead><tr><th class="r">#</th><th>Crisis</th><th class="r">Severity</th><th class="r">Funded</th><th class="r">Gap</th><th class="r">$ / person</th><th>Impact opportunity</th><th class="r">Score</th></tr></thead><tbody id="tb"></tbody></table>
-<div class="note">Ranks the <b id="nn"></b> crises with an FTS appeal this year. Regional (multi-country) plans are split evenly across their countries, so refugee-hosting countries inherit their regional plan's coverage. Crises with no appeal at all are not scorable on funding and are flagged above, not ranked. Data: INFORM Severity (ACAPS/HDX) and OCHA FTS, live.</div>
+<table><thead><tr><th class="r">#</th><th data-k="co">Crisis</th><th class="r" data-k="sev">Severity</th><th class="r" data-k="gap">Funding gap</th><th class="r" data-k="fpp">$ / person</th><th data-k="imp">Impact opportunity (0&ndash;100)</th></tr></thead><tbody id="tb"></tbody></table>
+<div class="note">Ranks the <b id="nn"></b> crises with an FTS appeal this year. Regional (multi-country) plans are split evenly across their countries. Crises with no appeal at all are flagged above, not ranked. Click a column header to sort by it. Data: INFORM Severity (ACAPS/HDX) and OCHA FTS, live.</div>
 </div>
 <script>
 var D=__DATA__,M=__META__;
 var CAT={"Very High":"#b91c1c","High":"#ea580c","Medium":"#d97706","Low":"#65a30d","Very Low":"#4d7c0f"};
+var st={k:"imp",dir:-1,A:0.35};
 function render(){
-  var A=+document.getElementById('a').value;
-  document.getElementById('av').textContent=A.toFixed(2);
-  document.getElementById('sw').textContent=Math.round((1-A)*100);
-  document.getElementById('fw').textContent=Math.round(A*100);
+  st.A=+document.getElementById('a').value;
+  document.getElementById('av').textContent=st.A.toFixed(2);
+  document.getElementById('sw').textContent=Math.round((1-st.A)*100);
+  document.getElementById('fw').textContent=Math.round(st.A*100);
+  D.forEach(function(d){if(d.cov!=null){var sf=d.sev/10,ff=1-d.cov/100;d.imp=st.A*ff+(1-st.A)*sf;d.gap=100-d.cov;}});
   var rows=D.filter(function(d){return d.cov!=null;});
-  rows.forEach(function(d){var sf=d.sev/10,ff=1-d.cov/100;d.imp=A*ff+(1-A)*sf;});
-  rows.sort(function(a,b){return b.imp-a.imp;});
-  var mx=rows.length?rows[0].imp:1;
-  document.getElementById('tb').innerHTML=rows.map(function(d,i){var c=CAT[d.cat]||"#78716c";var gap=100-d.cov;
+  rows.sort(function(a,b){var A=a[st.k],B=b[st.k];if(A==null)return 1;if(B==null)return -1;if(typeof A==="string")return st.dir*A.localeCompare(B);return st.dir*(A-B);});
+  document.getElementById('tb').innerHTML=rows.map(function(d,i){var c=CAT[d.cat]||"#78716c";var sc=Math.round(d.imp*100);
     return '<tr><td class="rk">'+(i+1)+'</td><td><span class="nm">'+d.co+'</span><span class="iso">'+(d.iso||'')+'</span></td>'+
     '<td class="r"><span class="pill" style="background:'+c+'">'+d.sev.toFixed(1)+'</span></td>'+
-    '<td class="r">'+d.cov+'%</td><td class="r gap">'+gap+'%</td>'+
+    '<td class="r gap">'+d.gap+'%</td>'+
     '<td class="r">'+(d.fpp==null?'&ndash;':'$'+(+d.fpp).toLocaleString())+'</td>'+
-    '<td><div class="barwrap"><div class="bar" style="width:'+Math.round(d.imp/mx*100)+'%"></div></div></td>'+
-    '<td class="sc">'+Math.round(d.imp*100)+'</td></tr>';}).join('');
+    '<td class="impc"><div class="barwrap"><div class="bar" style="width:'+sc+'%"></div><span class="scv">'+sc+'</span></div></td></tr>';}).join('');
   document.getElementById('nn').textContent=rows.length;
   var na=D.filter(function(d){return d.cov==null && d.sev>=7;}).sort(function(a,b){return b.sev-a.sev;});
   document.getElementById('noapp').innerHTML='<b>Severe crises with no FTS appeal</b> (can\'t be scored on funding, worth a manual look): '+(na.length?na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(' &middot; '):'none');
 }
 document.getElementById('a').addEventListener('input',render);
+[].slice.call(document.querySelectorAll('th[data-k]')).forEach(function(th){th.onclick=function(){var k=th.dataset.k;if(st.k===k)st.dir*=-1;else{st.k=k;st.dir=(k==="co")?1:-1;}render();};});
 document.getElementById('prov').textContent='INFORM '+M.inform+'  ·  FTS '+M.fts+'  ·  generated '+M.date;
 render();
 </script></body></html>'''
