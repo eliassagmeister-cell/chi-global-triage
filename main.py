@@ -188,7 +188,7 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 <li><b>Severity</b>: the INFORM Severity score, 0&ndash;10.</li>
 <li><b>Funding gap</b>: the share of the appeal still unfunded (1 &minus; coverage); higher means more neglected.</li>
 <li><b>$ / person</b>: funding received divided by the country's total people in need (shown for context only).</li>
-<li><b>Impact opportunity</b>: the ranking score, &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity, shown out of 100.</li>
+<li><b>Impact opportunity</b> (crises that are both severe and underfunded): the ranking score, &alpha; &times; funding gap + (1 &minus; &alpha;) &times; severity, shown out of 100.</li>
 <li><b>&alpha;</b>: the slider below: the weight given to the funding gap (neglect) versus severity.</li>
 </ul>
 </div>
@@ -199,7 +199,7 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 <table><thead><tr><th class="r">#</th><th data-k="co">Crisis</th><th class="r" data-k="sev">Severity</th><th class="r" data-k="gap">Funding gap</th><th class="r" data-k="fpp">$ / person</th><th data-k="imp">Impact opportunity (0&ndash;100)</th></tr></thead><tbody id="tb"></tbody></table>
 <div class="below">
 <div id="noapp"></div>
-<div>Ranks the <b id="nn"></b> crises with an FTS appeal this year; regional (multi-country) plans are split evenly across their countries. Click any column header to sort by it. Data live from INFORM Severity (ACAPS/HDX) and OCHA FTS.</div>
+<div>Ranks the <b id="nn"></b> crises with an FTS appeal this year. Coverage is a snapshot on the generated date; appeals open at different times and their requirements are revised during the year, so early in the year the ranking is noisier and coverage understates the eventual total. Regional (multi-country) plans are split evenly across their countries. Where a country has several INFORM crises, the severity shown is its most severe one, while the funding gap and people in need cover the whole country. Click any column header to sort. Data from INFORM Severity (ACAPS/HDX) and OCHA FTS.</div>
 </div>
 </div>
 <script>
@@ -222,7 +222,7 @@ function render(){
     '<td class="impc"><div class="barwrap"><div class="bar" style="width:'+sc+'%"></div><span class="scv">'+sc+'</span></div></td></tr>';}).join('');
   document.getElementById('nn').textContent=rows.length;
   var na=D.filter(function(d){return d.cov==null && d.sev>=7;}).sort(function(a,b){return b.sev-a.sev;});
-  document.getElementById('noapp').innerHTML=na.length?('<span class="flag">Note:</span> some severe crises have no FTS appeal and so can\'t be scored on funding. Worth a manual look: '+na.map(function(d){return d.co+' '+d.sev.toFixed(1);}).join(', ')+'.'):'';
+  document.getElementById('noapp').innerHTML=na.length?('<span class="flag">Note:</span> some severe crises have no FTS appeal and so can\'t be scored on funding.'):'';
 }
 document.getElementById('a').addEventListener('input',render);
 [].slice.call(document.querySelectorAll('th[data-k]')).forEach(function(th){th.onclick=function(){var k=th.dataset.k;if(st.k===k)st.dir*=-1;else{st.k=k;st.dir=(k==="co")?1:-1;}render();};});
@@ -233,6 +233,22 @@ render();
 def build():
     crises, isrc = fetch_inform()
     fts, fsrc = fetch_fts(FTS_YEAR)
+    # country-total people in need (summed across all of a country's crises), for the $/person denominator
+    pin_tot = {}
+    for d in crises:
+        if d.get("iso") and d.get("pin"):
+            pin_tot[d["iso"]] = pin_tot.get(d["iso"], 0) + d["pin"]
+    # one row per country: keep each country's most-severe crisis, carry the country-total PIN
+    best = {}
+    for d in crises:
+        iso = d.get("iso")
+        if not iso:
+            continue
+        if iso not in best or d["sev"] > best[iso]["sev"]:
+            best[iso] = d
+    crises = list(best.values())
+    for d in crises:
+        d["pin"] = pin_tot.get(d["iso"], d.get("pin"))
     enrich(crises, fts)
     crises.sort(key=lambda d: -d["sev"])
     meta = {"date": datetime.date.today().isoformat(), "inform": isrc, "fts": fsrc}
