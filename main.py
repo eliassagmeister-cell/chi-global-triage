@@ -4,16 +4,22 @@
 # computes funding received per person in need, writes index.html and serves it.
 #   python3 main.py         build + serve  (Replit "Run")
 #   python3 main.py build   build only     (Scheduled Deployment)
-import json, os, io, sys, datetime, urllib.request
+import json, os, io, sys, time, datetime, urllib.request
 
-FTS_YEAR = 2026
+FTS_YEAR = datetime.date.today().year  # follows the calendar year automatically
 HDX_PKG  = "inform-global-crisis-severity-index"
 UA = {"User-Agent": "CHI-triage/1.0"}
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-def _get(url, timeout=90):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
-        return r.read()
+def _get(url, timeout=90, tries=3):
+    for k in range(tries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+                return r.read()
+        except Exception:
+            if k == tries - 1:
+                raise
+            time.sleep(10 * (k + 1))
 
 def load_fallback():
     try:
@@ -83,17 +89,17 @@ def fetch_inform():
         import openpyxl, io
         meta = json.loads(_get("https://data.humdata.org/api/3/action/package_show?id=" + HDX_PKG))
         res = meta["result"]["resources"]
-        pick = None
-        for x in res:
-            if str(x.get("format", "")).lower() == "xlsx":
-                pick = x
-                if "severity" in (str(x.get("name", "")) + str(x.get("url", ""))).lower():
-                    break
-        if not pick:
+        # newest xlsx first, preferring files named as INFORM Severity releases
+        xl = [x for x in res if str(x.get("format", "")).lower() == "xlsx"]
+        if not xl:
             raise ValueError("no xlsx on HDX")
+        def newest(x):
+            return str(x.get("last_modified") or x.get("created") or "")
+        sev = [x for x in xl if "severity" in (str(x.get("name", "")) + str(x.get("url", ""))).lower()]
+        pick = max(sev or xl, key=newest)
         raw = _get(pick.get("download_url") or pick.get("url"))
         wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        return parse_inform(wb), "live from HDX"
+        return parse_inform(wb), "live from HDX (%s)" % (pick.get("name") or "")[:60]
     except Exception as e:
         return load_fallback(), "fallback snapshot (%s)" % str(e)[:70]
 
@@ -290,6 +296,9 @@ def serve():
         s.serve_forever()
 
 if __name__ == "__main__":
-    build()
+    meta = build()
+    # lets the GitHub workflow flag a build that fell back to the stored severity snapshot
+    open(os.path.join(HERE, "build_status.txt"), "w").write(
+        "ok" if meta["inform"].startswith("live") else "inform-fallback: " + meta["inform"])
     if len(sys.argv) < 2 or sys.argv[1] != "build":
         serve()

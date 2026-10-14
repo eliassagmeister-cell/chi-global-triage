@@ -1,7 +1,7 @@
 name: build-and-deploy
 on:
   schedule:
-    - cron: "0 6 1 * *"
+    - cron: "0 6 * * 1"   # every Monday; picks up each monthly INFORM release within a week
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -32,3 +32,9 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Flag stale severity data
+        run: |
+          if [ "$(cut -c1-2 build_status.txt)" != "ok" ]; then
+            echo "::error::INFORM Severity download failed; site published with the stored snapshot. $(cat build_status.txt)"
+            exit 1
+          fi
