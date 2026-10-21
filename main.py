@@ -151,7 +151,7 @@ def enrich(crises, fts):
 
 
 HTML = r'''<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Severity and Neglectedness of Humanitarian Crises</title><style>
+<title>Crisis Monitor: where severity meets underfunding | Aidwise</title><style>
 :root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--mut:#78716c;--line:#e7e5e4;--accent:#0f766e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:1000px;margin:0 auto;padding:26px 20px 60px}
@@ -179,8 +179,15 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 .impc .scv{position:absolute;right:7px;top:0;line-height:19px;font-size:11px;font-weight:700;color:var(--ink)}
 .below{margin-top:12px;font-size:11.5px;color:var(--mut);line-height:1.6}
 .below .flag{color:#9a3412}
+.brand{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+.brand a{color:#237e4d;text-decoration:none}.brand a:hover{text-decoration:underline}
+.beta{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#33ba71;color:#000;font-size:10px;letter-spacing:.06em}
+.intro{font-size:15px;line-height:1.55;margin:8px 0 6px;max-width:720px}
+.fb{margin-top:10px}
 </style></head><body><div class="wrap">
-<h1>Severity and Neglectedness of Humanitarian Crises</h1>
+<div class="brand"><a href="https://aidwise.org">Aidwise</a> &middot; Crisis Monitor <span class="beta">Beta</span></div>
+<h1>Crisis Monitor: where severity meets underfunding</h1>
+<p class="intro">This interim tool is part of Aidwise&rsquo;s global research into where humanitarian funding can do the most good. It ranks current crises by how severe and how underfunded they are &ndash; a starting point for further analysis, not a giving recommendation.</p>
 <div class="prov" id="prov"></div>
 <div class="about">
 <p>Every active humanitarian crisis, ranked by a score that blends how severe it is with how underfunded it is. Move the &alpha; slider to weight neglect against severity: at 0 the ranking is pure severity, at 1 it is pure funding gap.</p>
@@ -206,6 +213,7 @@ th.r,td.r{text-align:right}tr:last-child td{border-bottom:0}
 <div class="below">
 <div id="noapp"></div>
 <div>Ranks the <b id="nn"></b> crises with an FTS appeal this year. Coverage is a snapshot on the generated date; appeals open at different times and their requirements are revised during the year, so early in the year the ranking is noisier and coverage understates the eventual total. Regional (multi-country) plans are split evenly across their countries. Where a country has several INFORM crises, the severity shown is its most severe one, while the funding gap and people in need cover the whole country. Click any column header to sort. Data from INFORM Severity (ACAPS/HDX) and OCHA FTS.</div>
+<div class="fb">This is a beta. Spotted an issue or have feedback? <a href="mailto:info@aidwise.org">info@aidwise.org</a> &middot; <a href="https://aidwise.org">aidwise.org</a></div>
 </div>
 </div>
 <script>
